@@ -206,6 +206,81 @@ def upload():
         return redirect(url_for('index'))
     return render_template('upload.html')
 
+@app.route('/edit/<int:id>', methods=['GET', 'POST'])
+def edit(id):
+    conn = get_db()
+    recipe = conn.execute("SELECT * FROM recipes WHERE id=?", (id,)).fetchone()
+    
+    if recipe is None:
+        conn.close()
+        return "菜谱不存在", 404
+
+    if request.method == 'POST':
+        title = request.form['title']
+        categories = request.form.getlist('categories[]')
+        
+        # 处理新建类别
+        new_category = request.form.get('new_category', '').strip()
+        if new_category:
+            extra_tags = [t.strip() for t in new_category.replace('，', ',').split(',') if t.strip()]
+            categories.extend(extra_tags)
+        categories = list(set(categories)) # 去重
+        
+        steps = [s for s in request.form.getlist('steps[]') if s.strip()]
+        ingredients = request.form.getlist('ingredients[]')
+        note = request.form.get('note', '')
+        
+        d_val = request.form.get('duration_val', '0')
+        d_unit = request.form.get('duration_unit', '分钟')
+        
+        # 处理图片
+        file = request.files['image']
+        filename = recipe['image_path']
+        if file and file.filename:
+            # 如果上传了新图片，删除旧图片
+            if filename:
+                old_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                if os.path.exists(old_path):
+                    os.remove(old_path)
+            
+            filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{file.filename}"
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        
+        # 强制将所列食材从黑名单中踢出
+        for ing in ingredients:
+            conn.execute("DELETE FROM blacklist WHERE word=?", (ing,))
+
+        # 更新菜谱
+        conn.execute('''UPDATE recipes 
+            SET title=?, category=?, ingredients=?, steps=?, duration_display=?, duration_minutes=?, note=?, image_path=?
+            WHERE id=?''',
+            (title, json.dumps(categories, ensure_ascii=False), 
+             json.dumps(ingredients, ensure_ascii=False),
+             json.dumps(steps, ensure_ascii=False),
+             f"{d_val} {d_unit}", to_minutes(d_val, d_unit),
+             note, filename, id))
+        conn.commit()
+        conn.close()
+        return redirect(url_for('recipe_detail', id=id))
+
+    # GET 请求：准备数据
+    d = dict(recipe)
+    d['category'] = json.loads(d['category']) if d['category'] else []
+    d['ingredients'] = json.loads(d['ingredients']) if d['ingredients'] else []
+    d['steps'] = json.loads(d['steps']) if d['steps'] else []
+    
+    # 拆解时长展示字段
+    if d['duration_display'] and ' ' in d['duration_display']:
+        parts = d['duration_display'].split(' ')
+        d['d_val'] = parts[0]
+        d['d_unit'] = parts[1]
+    else:
+        d['d_val'] = "0"
+        d['d_unit'] = "分钟"
+
+    conn.close()
+    return render_template('edit.html', recipe=d)
+
 @app.route('/delete/<int:id>')
 def delete(id):
     conn = get_db()

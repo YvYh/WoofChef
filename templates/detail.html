@@ -14,6 +14,7 @@
                 <span class="mr-2">←</span> 返回首页
             </a>
             <div class="flex gap-4">
+                <a href="/edit/{{ recipe.id }}" class="text-blue-500 text-sm hover:bg-blue-50 px-3 py-1.5 rounded-lg transition border border-blue-100">编辑菜谱</a>
                 <a href="/delete/{{ recipe.id }}" onclick="return confirm('确定要永久删除《{{ recipe.title }}》吗？图片也会被清理。')" class="text-red-500 text-sm hover:bg-red-50 px-3 py-1.5 rounded-lg transition">删除菜谱</a>
             </div>
         </div>

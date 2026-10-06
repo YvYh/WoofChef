@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>编辑菜谱 - {{ recipe.title }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-4 md:p-8">
+    <div class="max-w-2xl mx-auto bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-2xl font-bold text-gray-800">✍️ 编辑菜谱</h1>
+            <a href="/recipe/{{ recipe.id }}" class="text-gray-500 hover:text-black transition">取消并返回</a>
+        </div>
+        
+        <form action="/edit/{{ recipe.id }}" method="POST" enctype="multipart/form-data">
+            <input type="text" name="title" value="{{ recipe.title }}" placeholder="菜谱名称" class="w-full text-2xl border-b-2 border-gray-100 py-2 mb-8 outline-none focus:border-blue-500 transition" required>
+
+            <div class="mb-8">
+                <label class="block text-sm font-semibold text-gray-700 mb-3">所属分类 (可多选)</label>
+                <div class="flex flex-wrap gap-3 mb-3" id="category-container">
+                    {% set default_cats = ["中餐", "西餐", "饮品", "甜点", "融合菜", "低脂"] %}
+                    
+                    {% for c in default_cats %}
+                    <label class="cursor-pointer">
+                        <input type="checkbox" name="categories[]" value="{{c}}" class="hidden peer" {% if c in recipe.category %}checked{% endif %}>
+                        <span class="px-4 py-1.5 border border-gray-200 rounded-full peer-checked:bg-black peer-checked:text-white peer-checked:border-black transition text-sm">{{c}}</span>
+                    </label>
+                    {% endfor %}
+
+                    {% for c in recipe.category %}
+                        {% if c not in default_cats %}
+                        <label class="cursor-pointer">
+                            <input type="checkbox" name="categories[]" value="{{c}}" class="hidden peer" checked>
+                            <span class="px-4 py-1.5 border border-gray-200 rounded-full peer-checked:bg-black peer-checked:text-white peer-checked:border-black transition text-sm">{{c}}</span>
+                        </label>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                <input type="text" name="new_category" placeholder="+ 添加新分类 (多个用逗号隔开)" class="w-full border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-100">
+            </div>
+
+            <div class="mb-8">
+                <label class="block text-sm font-semibold text-gray-700 mb-3">制作步骤</label>
+                <div id="steps-list" class="space-y-3">
+                    {% if recipe.steps %}
+                        {% for step in recipe.steps %}
+                        <textarea name="steps[]" rows="2" onblur="triggerAnalyze()" class="w-full border rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-100 text-sm" placeholder="{{ loop.index }}. 步骤说明...">{{ step }}</textarea>
+                        {% endfor %}
+                    {% else %}
+                        <textarea name="steps[]" rows="2" onblur="triggerAnalyze()" class="w-full border rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-100 text-sm" placeholder="1. 步骤说明..."></textarea>
+                    {% endif %}
+                </div>
+                <button type="button" onclick="addStep()" class="mt-3 text-blue-500 text-sm font-medium hover:underline">+ 添加下一步</button>
+            </div>
+
+            <div class="mb-8 bg-blue-50/50 p-5 rounded-xl border border-blue-100">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-sm font-semibold text-blue-800">🧺 食材库 (可删除或添加)</span>
+                </div>
+                <div id="ingredient-tags" class="flex flex-wrap gap-2 mb-4 min-h-[2rem]">
+                    {% for ing in recipe.ingredients %}
+                    <div id="ing-{{ ing }}" class="bg-white border border-blue-200 px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 shadow-sm">
+                        <span class="font-medium text-gray-700">{{ ing }}</span>
+                        <input type="hidden" name="ingredients[]" value="{{ ing }}">
+                        <button type="button" onclick="removeAndBlacklist('{{ ing }}', this)" class="text-gray-400 hover:text-red-500 font-bold">&times;</button>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="flex gap-2">
+                    <input type="text" id="manual-ing" class="flex-1 border border-blue-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-200" placeholder="手动补充...">
+                    <button type="button" onclick="addIngTag()" class="bg-blue-500 text-white px-4 rounded-lg text-sm hover:bg-blue-600 transition">添加</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">更换照片 (不传则保持原图)</label>
+                    {% if recipe.image_path %}
+                    <div class="mb-2 flex items-center gap-2">
+                        <img src="{{ url_for('uploaded_file', filename=recipe.image_path) }}" class="h-10 w-10 object-cover rounded-md border border-gray-200">
+                        <span class="text-xs text-gray-500">当前图片</span>
+                    </div>
+                    {% endif %}
+                    <input type="hidden" name="old_image_path" value="{{ recipe.image_path }}">
+                    <input type="file" name="image" accept="image/*" class="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">总用时</label>
+                    <div class="flex gap-2">
+                        <input type="number" name="duration_val" class="w-20 border rounded-lg p-2 text-center outline-none focus:ring-2 focus:ring-blue-100" value="{{ recipe.d_val }}">
+                        <select name="duration_unit" class="border rounded-lg p-2 outline-none focus:ring-2 focus:ring-blue-100">
+                            <option value="分钟" {% if recipe.d_unit == '分钟' %}selected{% endif %}>分钟</option>
+                            <option value="小时" {% if recipe.d_unit == '小时' %}selected{% endif %}>小时</option>
+                            <option value="天" {% if recipe.d_unit == '天' %}selected{% endif %}>天</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-8">
+                <label class="block text-sm font-semibold text-gray-700 mb-2">心得与备注</label>
+                <textarea name="note" rows="3" class="w-full border rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-100 text-sm" placeholder="写点碎碎念...">{{ recipe.note }}</textarea>
+            </div>
+
+            <button type="submit" class="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition shadow-lg">✅ 更新菜谱</button>
+        </form>
+    </div>
+
+    <script>
+        let stepCount = {{ recipe.steps | length if recipe.steps else 1 }};
+
+        function addStep() {
+            stepCount++;
+            const div = document.createElement('textarea');
+            div.name = "steps[]";
+            div.rows = 2;
+            div.className = "w-full border rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-100 text-sm mt-3";
+            div.placeholder = `${stepCount}. 接下来...`;
+            div.onblur = triggerAnalyze;
+            document.getElementById('steps-list').appendChild(div);
+            div.focus();
+        }
+
+        async function triggerAnalyze() {
+            const steps = Array.from(document.getElementsByName('steps[]')).map(i => i.value);
+            try {
+                const res = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({steps})
+                });
+                const data = await res.json();
+                data.ingredients.forEach(renderIngTag);
+            } catch (error) {
+                console.error("NLP Analysis failed:", error);
+            }
+        }
+
+        function renderIngTag(text) {
+            text = text.trim();
+            if (!text || document.getElementById(`ing-${text}`)) return;
+            const container = document.getElementById('ingredient-tags');
+            const span = document.createElement('div');
+            span.id = `ing-${text}`;
+            span.className = "bg-white border border-blue-200 px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 shadow-sm";
+            span.innerHTML = `
+                <span class="font-medium text-gray-700">${text}</span>
+                <input type="hidden" name="ingredients[]" value="${text}">
+                <button type="button" onclick="removeAndBlacklist('${text}', this)" class="text-gray-400 hover:text-red-500 font-bold">&times;</button>
+            `;
+            container.appendChild(span);
+        }
+
+        async function removeAndBlacklist(word, btnElement) {
+            btnElement.parentElement.remove();
+            try {
+                await fetch('/api/blacklist', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({word: word})
+                });
+                console.log(`"${word}" 已加入黑名单`);
+            } catch (error) {
+                console.error("加入黑名单失败", error);
+            }
+        }
+
+        function addIngTag() {
+            const input = document.getElementById('manual-ing');
+            renderIngTag(input.value);
+            input.value = '';
+        }
+    </script>
+</body>
+</html>
