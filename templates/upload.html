@@ -113,12 +113,31 @@
             const span = document.createElement('div');
             span.id = `ing-${text}`;
             span.className = "bg-white border border-blue-200 px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 shadow-sm";
+            // onclick 事件调用了 removeAndBlacklist 函数
             span.innerHTML = `
                 <span class="font-medium text-gray-700">${text}</span>
                 <input type="hidden" name="ingredients[]" value="${text}">
-                <button type="button" onclick="this.parentElement.remove()" class="text-gray-400 hover:text-red-500 font-bold">&times;</button>
+                <button type="button" onclick="removeAndBlacklist('${text}', this)" class="text-gray-400 hover:text-red-500 font-bold">&times;</button>
             `;
             container.appendChild(span);
+        }
+
+        // 删除并拉黑逻辑
+        async function removeAndBlacklist(word, btnElement) {
+            // 1. 从界面上移除
+            btnElement.parentElement.remove();
+            
+            // 2. 异步发送给后端加入黑名单（静默执行，不打断用户操作）
+            try {
+                await fetch('/api/blacklist', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({word: word})
+                });
+                console.log(`"${word}" 已加入黑名单`);
+            } catch (error) {
+                console.error("加入黑名单失败", error);
+            }
         }
 
         function addIngTag() {

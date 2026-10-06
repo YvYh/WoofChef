@@ -1,6 +1,6 @@
 name: "WoofChef"
 description: "一个支持 AI 原材料识别的本地私有菜谱记忆系统。"
-version: "1.0.0"
+version: "1.0.1"
 slug: "woofchef"
 init: false
 arch:
@@ -10,6 +10,6 @@ ports:
   5000/tcp: 5000
 webui: http://[HOST]:[PORT:5000]
 panel_icon: mdi:chef-hat
-panel_title: "WoofChef 菜谱"
+panel_title: "WoofChef 汪汪厨房"
 map:
   - share:rw   # 可选：如果未来需要与其他插件共享文件

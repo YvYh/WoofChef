@@ -23,6 +23,15 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+
+    # 动态黑名单表
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS blacklist (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            word TEXT UNIQUE NOT NULL
+        )
+    ''')
+    
     conn.commit()
     conn.close()
     print("数据库初始化/检查完毕。")

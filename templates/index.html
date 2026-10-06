@@ -5,33 +5,105 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WoofChef 菜谱管理</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 隐藏 details 默认的三角形箭头，用自定义样式使其更美观 */
+        summary::-webkit-details-marker { display: none; }
+        details[open] summary ~ * { animation: fadeIn 0.2s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans p-4 md:p-8">
-    <div class="max-w-6xl mx-auto">
+    <div class="max-w-7xl mx-auto">
+        
         <header class="flex justify-between items-center mb-8">
-            <h1 class="text-3xl font-bold tracking-tight">WoofChef 👨‍🍳</h1>
-            <a href="/upload" class="bg-black text-white px-5 py-2 rounded-lg hover:bg-gray-800 transition shadow-md">+ 记新菜</a>
+            <h1 class="text-3xl font-bold tracking-tight flex items-center gap-2">
+                <img src="/image/鸡毛厨师.png" alt="icon1" class="h-8 w-8 object-contain" onerror="this.style.display='none'">
+                WoofChef 汪汪厨房
+                <img src="/image/小白吃饭.png" alt="icon2" class="h-8 w-8 object-contain" onerror="this.style.display='none'">
+            </h1>
+            <a href="/upload" class="bg-black text-white px-5 py-2 rounded-lg hover:bg-gray-800 transition shadow-md whitespace-nowrap">+ 记新菜</a>
         </header>
 
-        <form action="/" method="GET" class="mb-8 flex gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-            <input type="text" name="search" value="{{ search }}" placeholder="搜索菜名或原材料..." class="w-full border-none p-2 outline-none text-lg">
-            <button type="submit" class="bg-blue-500 text-white px-8 rounded-lg font-medium hover:bg-blue-600 transition">搜索</button>
+        <form action="/" method="GET" class="mb-8 bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 items-center">
+            
+            <input type="text" name="search" value="{{ search }}" placeholder="搜菜名或备注..." class="flex-1 border border-gray-200 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-blue-100 min-w-[200px]">
+
+            <details class="relative group w-full md:w-40 z-20">
+                <summary class="border border-gray-200 rounded-lg p-2.5 bg-white cursor-pointer select-none text-gray-600 hover:bg-gray-50 flex justify-between items-center">
+                    <span>选择分类...</span>
+                    <span class="text-xs">▼</span>
+                </summary>
+                <div class="absolute top-full left-0 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl p-3 max-h-60 overflow-y-auto flex flex-col gap-2">
+                    {% if all_categories %}
+                        {% for c in all_categories %}
+                        <label class="flex items-center gap-2 cursor-pointer hover:bg-blue-50 p-1 rounded">
+                            <input type="checkbox" name="categories" value="{{ c }}" {% if c in selected_cats %}checked{% endif %} class="w-4 h-4 text-blue-600 rounded">
+                            <span class="text-sm">{{ c }}</span>
+                        </label>
+                        {% endfor %}
+                    {% else %}
+                        <span class="text-xs text-gray-400">暂无分类数据</span>
+                    {% endif %}
+                </div>
+            </details>
+
+            <details class="relative group w-full md:w-56 z-10">
+                <summary class="border border-gray-200 rounded-lg p-2.5 bg-white cursor-pointer select-none text-gray-600 hover:bg-gray-50 flex justify-between items-center">
+                    <span class="truncate">包含食材...</span>
+                    <span class="text-xs ml-2 flex-shrink-0">▼</span>
+                </summary>
+                <div class="absolute top-full left-0 mt-1 w-full md:w-64 bg-white border border-gray-200 rounded-lg shadow-xl p-3 max-h-72 overflow-y-auto flex flex-col relative">
+                    
+                    <div class="sticky -top-3 pt-3 pb-2 mb-2 bg-white border-b border-gray-100 z-20">
+                        <input type="text" id="ing-filter-input" 
+                               placeholder="🔍 快速查找食材..." 
+                               class="w-full border border-gray-200 rounded px-3 py-1.5 text-sm outline-none focus:border-blue-400 transition"
+                               onkeyup="filterIngredients()"
+                               onkeydown="if(event.key==='Enter'){event.preventDefault();}"> </div>
+
+                    <div id="ing-checkbox-list" class="flex flex-col gap-1">
+                        {% if all_ingredients %}
+                            {% for i in all_ingredients %}
+                            <label class="ing-item flex items-center gap-2 cursor-pointer hover:bg-blue-50 p-1.5 rounded transition">
+                                <input type="checkbox" name="ingredients" value="{{ i }}" {% if i in selected_ings %}checked{% endif %} class="w-4 h-4 text-blue-600 rounded">
+                                <span class="text-sm text-gray-700">{{ i }}</span>
+                            </label>
+                            {% endfor %}
+                        {% else %}
+                            <span class="text-xs text-gray-400 p-2">暂无食材数据</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </details>
+
+            <select name="duration" class="border border-gray-200 rounded-lg p-2.5 outline-none bg-white text-gray-600 w-full md:w-36 focus:ring-2 focus:ring-blue-100 cursor-pointer">
+                <option value="all" {% if duration_filter == 'all' %}selected{% endif %}>全部时长</option>
+                <option value="under_30" {% if duration_filter == 'under_30' %}selected{% endif %}>30分钟内</option>
+                <option value="under_60" {% if duration_filter == 'under_60' %}selected{% endif %}>1小时内</option>
+                <option value="over_60" {% if duration_filter == 'over_60' %}selected{% endif %}>1小时以上</option>
+            </select>
+
+            <button type="submit" class="w-full md:w-auto bg-blue-500 text-white px-8 py-2.5 rounded-lg font-medium hover:bg-blue-600 transition shadow-sm whitespace-nowrap flex-shrink-0">
+                搜索
+            </button>
         </form>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {% for r in recipes %}
-            <div class="bg-white rounded-2xl shadow-sm overflow-hidden hover:shadow-lg transition flex flex-col group border border-gray-100">
+            <a href="/recipe/{{ r.id }}" class="bg-white rounded-2xl shadow-sm overflow-hidden hover:shadow-lg transition flex flex-col group border border-gray-100 cursor-pointer block">
+                
                 {% if r.image_path %}
                 <div class="h-56 overflow-hidden relative">
                     <img src="{{ url_for('uploaded_file', filename=r.image_path) }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
                     <span class="absolute bottom-3 right-3 bg-black/70 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">⏱ {{ r.duration_display }}</span>
                 </div>
                 {% endif %}
+                
                 <div class="p-5 flex-1 flex flex-col">
-                    <h2 class="text-xl font-bold mb-3">{{ r.title }}</h2>
+                    <h2 class="text-xl font-bold mb-3 group-hover:text-blue-600 transition">{{ r.title }}</h2>
                     <div class="flex flex-wrap gap-2 mb-4">
                         {% for c in r.category %}
-                        <a href="/?category={{ c }}" class="bg-gray-100 text-gray-600 px-2 py-1 rounded-md text-xs hover:bg-gray-200">{{ c }}</a>
+                        <span class="bg-gray-100 text-gray-600 px-2 py-1 rounded-md text-xs">{{ c }}</span>
                         {% endfor %}
                     </div>
                     <div class="text-sm text-gray-600 mb-4 flex-1">
@@ -40,10 +112,10 @@
                     </div>
                     <div class="flex justify-between items-center mt-auto pt-4 border-t border-gray-50">
                         <span class="text-xs text-gray-400">{{ r.created_at[:10] }}</span>
-                        <a href="/delete/{{ r.id }}" onclick="return confirm('确定要删除《{{ r.title }}》吗？图片也会彻底删除。')" class="text-red-400 text-sm hover:text-red-600 font-medium">删除</a>
+                        <span class="text-blue-500 text-sm font-medium opacity-0 group-hover:opacity-100 transition">查看做法 →</span>
                     </div>
                 </div>
-            </div>
+            </a>
             {% else %}
             <div class="col-span-full text-center py-20 text-gray-500">
                 <p class="text-xl mb-4">还没有相关的菜谱记忆 🍽️</p>
@@ -51,6 +123,38 @@
             </div>
             {% endfor %}
         </div>
+
     </div>
+    
+    <script>
+        document.addEventListener('click', function(event) {
+            const detailsElements = document.querySelectorAll('details');
+            detailsElements.forEach((details) => {
+                if (!details.contains(event.target)) {
+                    details.removeAttribute('open');
+                }
+            });
+        });
+
+        function filterIngredients() {
+            // 获取用户输入的过滤词并转为小写
+            const query = document.getElementById('ing-filter-input').value.toLowerCase();
+            // 获取所有的食材选项标签
+            const items = document.querySelectorAll('.ing-item');
+            
+            items.forEach(item => {
+                // 获取标签内的文本内容
+                const text = item.textContent.toLowerCase();
+                // 如果文本包含输入的词，则显示（保持 flex 布局），否则隐藏
+                if (text.includes(query)) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+    </script>
+
+    
 </body>
 </html>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ recipe.title }} - WoofChef</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans pb-20">
+    
+    <div class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 shadow-sm">
+        <div class="max-w-4xl mx-auto px-4 md:px-8 py-4 flex justify-between items-center">
+            <a href="/" class="flex items-center text-gray-600 hover:text-black transition font-medium">
+                <span class="mr-2">←</span> 返回首页
+            </a>
+            <div class="flex gap-4">
+                <a href="/delete/{{ recipe.id }}" onclick="return confirm('确定要永久删除《{{ recipe.title }}》吗？图片也会被清理。')" class="text-red-500 text-sm hover:bg-red-50 px-3 py-1.5 rounded-lg transition">删除菜谱</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-4xl mx-auto bg-white min-h-screen shadow-sm">
+        {% if recipe.image_path %}
+        <div class="w-full h-64 md:h-96 overflow-hidden bg-gray-100">
+            <img src="{{ url_for('uploaded_file', filename=recipe.image_path) }}" class="w-full h-full object-cover">
+        </div>
+        {% endif %}
+
+        <div class="p-6 md:p-12">
+            <div class="mb-10 border-b border-gray-100 pb-8">
+                <h1 class="text-3xl md:text-5xl font-bold mb-6 text-gray-900 leading-tight">{{ recipe.title }}</h1>
+                
+                <div class="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                    <div class="flex items-center gap-1 bg-gray-100 px-3 py-1 rounded-full">
+                        <span>⏱</span> <span class="font-medium">{{ recipe.duration_display }}</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <span>📅</span> <span>{{ recipe.created_at[:10] }}</span>
+                    </div>
+                    {% if recipe.category %}
+                    <div class="flex flex-wrap gap-2 ml-auto">
+                        {% for c in recipe.category %}
+                        <span class="bg-black text-white px-3 py-1 rounded-full text-xs font-medium">{{ c }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="mb-10">
+                <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+                    <span class="text-2xl">🧺</span> 所需食材
+                </h2>
+                {% if recipe.ingredients %}
+                <div class="flex flex-wrap gap-2">
+                    {% for ing in recipe.ingredients %}
+                    <span class="bg-blue-50 text-blue-700 border border-blue-100 px-4 py-2 rounded-lg font-medium">{{ ing }}</span>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-500 italic">未记录特定食材</p>
+                {% endif %}
+            </div>
+
+            <div class="mb-12">
+                <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+                    <span class="text-2xl">🍳</span> 制作步骤
+                </h2>
+                {% if recipe.steps %}
+                <div class="space-y-6">
+                    {% for step in recipe.steps %}
+                    <div class="flex gap-4 items-start group">
+                        <div class="shrink-0 w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center font-bold text-sm group-hover:bg-blue-500 group-hover:text-white transition">
+                            {{ loop.index }}
+                        </div>
+                        <p class="text-lg text-gray-700 leading-relaxed pt-0.5">{{ step }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-500 italic">未记录具体步骤</p>
+                {% endif %}
+            </div>
+
+            {% if recipe.note %}
+            <div class="bg-yellow-50/50 border-l-4 border-yellow-400 p-6 rounded-r-xl">
+                <h3 class="text-sm font-bold text-yellow-800 mb-2">💡 笔记</h3>
+                <p class="text-gray-700 whitespace-pre-wrap">{{ recipe.note }}</p>
+            </div>
+            {% endif %}
+            
+        </div>
+    </div>
+</body>
+</html>
